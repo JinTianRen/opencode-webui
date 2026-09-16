@@ -21,32 +21,32 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onCommand:opencode-sidebar-web.openPanel",
-    "onCommand:opencode-sidebar-web.startServer"
+    "onCommand:opencode-webui.openPanel",
+    "onCommand:opencode-webui.startServer"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "viewsContainers": {
       "secondarySidebar": [
         {
-          "id": "opencode-sidebar-web",
+          "id": "opencode-webui",
           "title": "OpenCode",
           "icon": "media/icon.svg"
         }
       ]
     },
     "views": {
-      "opencode-sidebar-web": [
+      "opencode-webui": [
         {
           "type": "webview",
-          "id": "opencode-sidebar-web.view",
+          "id": "opencode-webui.view",
           "name": "OpenCode"
         }
       ]
     },
     "commands": [
       {
-        "command": "opencode-sidebar-web.openPanel",
+        "command": "opencode-webui.openPanel",
         "title": "OpenCode: Open Panel",
         "icon": {
           "light": "media/icon.svg",
@@ -54,7 +54,7 @@
         }
       },
       {
-        "command": "opencode-sidebar-web.closePanel",
+        "command": "opencode-webui.closePanel",
         "title": "OpenCode: Close Panel",
         "icon": {
           "light": "media/icon-close.svg",
@@ -62,64 +62,64 @@
         }
       },
       {
-        "command": "opencode-sidebar-web.startServer",
+        "command": "opencode-webui.startServer",
         "title": "OpenCode: Start Server"
       },
       {
-        "command": "opencode-sidebar-web.stopServer",
+        "command": "opencode-webui.stopServer",
         "title": "OpenCode: Stop Server"
       },
       {
-        "command": "opencode-sidebar-web.restartServer",
+        "command": "opencode-webui.restartServer",
         "title": "OpenCode: Restart Server"
       },
       {
-        "command": "opencode-sidebar-web.openFile",
+        "command": "opencode-webui.openFile",
         "title": "OpenCode: Open File"
       },
       {
-        "command": "opencode-sidebar-web.focusPanel",
+        "command": "opencode-webui.focusPanel",
         "title": "OpenCode: Focus Panel"
       },
       {
-        "command": "opencode-sidebar-web.installBinary",
+        "command": "opencode-webui.installBinary",
         "title": "OpenCode: Install opencode binary"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "command": "opencode-sidebar-web.openPanel",
+          "command": "opencode-webui.openPanel",
           "group": "navigation",
-          "when": "!config.opencode-sidebar-web.hideButton"
+          "when": "!config.opencode-webui.hideButton"
         }
       ],
       "view/title": [
         {
-          "command": "opencode-sidebar-web.startServer",
-          "when": "view == opencode-sidebar-web.view && !opencodeSidebarServerRunning",
+          "command": "opencode-webui.startServer",
+          "when": "view == opencode-webui.view && !opencodeSidebarServerRunning",
           "group": "navigation"
         },
         {
-          "command": "opencode-sidebar-web.stopServer",
-          "when": "view == opencode-sidebar-web.view && opencodeSidebarServerRunning",
+          "command": "opencode-webui.stopServer",
+          "when": "view == opencode-webui.view && opencodeSidebarServerRunning",
           "group": "navigation"
         },
         {
-          "command": "opencode-sidebar-web.restartServer",
-          "when": "view == opencode-sidebar-web.view && opencodeSidebarServerRunning",
+          "command": "opencode-webui.restartServer",
+          "when": "view == opencode-webui.view && opencodeSidebarServerRunning",
           "group": "navigation"
         },
         {
-          "command": "opencode-sidebar-web.installBinary",
-          "when": "view == opencode-sidebar-web.view && !opencodeSidebarBinaryInstalled",
+          "command": "opencode-webui.installBinary",
+          "when": "view == opencode-webui.view && !opencodeSidebarBinaryInstalled",
           "group": "navigation"
         }
       ]
     },
     "keybindings": [
       {
-        "command": "opencode-sidebar-web.openPanel",
+        "command": "opencode-webui.openPanel",
         "key": "ctrl+shift+o",
         "mac": "cmd+shift+o"
       }
@@ -127,32 +127,32 @@
     "configuration": {
       "title": "OpenCode Sidebar Web",
       "properties": {
-        "opencode-sidebar-web.autoStart": {
+        "opencode-webui.autoStart": {
           "type": "boolean",
           "default": false,
           "description": "Start the OpenCode server automatically when VS Code opens"
         },
-        "opencode-sidebar-web.hostname": {
+        "opencode-webui.hostname": {
           "type": "string",
           "default": "127.0.0.1",
           "description": "Hostname for the OpenCode server"
         },
-        "opencode-sidebar-web.hideButton": {
+        "opencode-webui.hideButton": {
           "type": "boolean",
           "default": false,
           "description": "Hide the OpenCode button in the editor title bar"
         },
-        "opencode-sidebar-web.autoReconnect": {
+        "opencode-webui.autoReconnect": {
           "type": "boolean",
           "default": true,
           "description": "Retry connection automatically when the server goes down"
         },
-        "opencode-sidebar-web.maxReconnectAttempts": {
+        "opencode-webui.maxReconnectAttempts": {
           "type": "number",
           "default": 3,
           "description": "Maximum number of reconnection attempts"
         },
-        "opencode-sidebar-web.sidebarPosition": {
+        "opencode-webui.sidebarPosition": {
           "type": "string",
           "default": "right",
           "enum": [
@@ -160,22 +160,22 @@
           ],
           "description": "OpenCode always appears in the secondary sidebar (right side). This option is kept for compatibility."
         },
-        "opencode-sidebar-web.devcontainerMode": {
+        "opencode-webui.devcontainerMode": {
           "type": "boolean",
           "default": true,
           "description": "Automatically detect opencode running in a devcontainer/remote environment"
         },
-        "opencode-sidebar-web.autoInstallInDevcontainer": {
+        "opencode-webui.autoInstallInDevcontainer": {
           "type": "boolean",
           "default": true,
           "description": "Automatically install opencode on activation in a devcontainer if not present"
         },
-        "opencode-sidebar-web.serverPort": {
+        "opencode-webui.serverPort": {
           "type": "number",
           "default": 4096,
           "description": "Fixed port used when starting the OpenCode server (0 = random). Default 4096 matches opencode.json server.port, so browser settings like color scheme persist across restarts."
         },
-        "opencode-sidebar-web.connectExistingLocal": {
+        "opencode-webui.connectExistingLocal": {
           "type": "boolean",
           "default": true,
           "description": "Detect and connect to an existing OpenCode server (default port 4096) even in a local (non-remote) environment"
