@@ -41,9 +41,13 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
       } else if (msg.type === 'showLogs') {
         this._server.outputChannel.show();
       } else if (msg.type === 'openSettings') {
-        vscode.commands.executeCommand(
-          'workbench.action.openSettings', 'opencode-webui'
-        );
+        if (this._server.isRunning) {
+          void vscode.env.openExternal(vscode.Uri.parse(this._server.serverUrl));
+        } else {
+          vscode.commands.executeCommand(
+            'workbench.action.openSettings', 'opencode-webui'
+          );
+        }
       }
     });
 
@@ -237,7 +241,7 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
     <span>${statusText}</span>
     <span class="spacer"></span>
     <a onclick="showLogs()">Logs</a>
-    <a onclick="openSettings()" style="margin-left:8px">Settings</a>
+    <a onclick="openSettings()" style="margin-left:8px" title="Open OpenCode WebUI settings (Ctrl+, inside the page to open its settings dialog)">Settings</a>
     <a onclick="closePanel()" style="margin-left:8px">Close</a>
   </div>
 
