@@ -18,13 +18,15 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const devcontainerMode = vscode.workspace.getConfiguration('opencode-sidebar-web')
     .get('devcontainerMode', true);
+  const connectExistingLocal = vscode.workspace.getConfiguration('opencode-sidebar-web')
+    .get('connectExistingLocal', true);
 
-  if (server.isRemoteEnvironment() && devcontainerMode) {
+  if ((server.isRemoteEnvironment() || connectExistingLocal) && devcontainerMode) {
     const existing = await server.detectExistingServer();
     if (existing) {
       await server.connectToExisting(existing);
       panel?.render();
-    } else if (!server.isBinaryInstalled()) {
+    } else if (!server.isBinaryInstalled() && server.isRemoteEnvironment()) {
       const autoInstall = vscode.workspace.getConfiguration('opencode-sidebar-web')
         .get('autoInstallInDevcontainer', true);
       if (autoInstall) {

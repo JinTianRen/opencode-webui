@@ -195,6 +195,33 @@ export class OpenCodeServer {
       }
     } catch { /* pgrep not available or no process */ }
 
+    // 2b. Windows: enumerate opencode processes via CIM
+    if (platform() === 'win32') {
+      try {
+        const out = execSync(
+          'powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"Name like \'opencode%\'\\" | Select-Object ProcessId,CommandLine | ConvertTo-Json -Compress"',
+          { encoding: 'utf8', timeout: 8000 }
+        );
+        let text = out.replace(/^\uFEFF/, '').trim();
+        if (text) {
+          let parsed: unknown = JSON.parse(text);
+          if (!Array.isArray(parsed)) { parsed = [parsed]; }
+          for (const entry of parsed as Array<{ ProcessId?: number; CommandLine?: string | null }>) {
+            const args = (entry.CommandLine || '').split(/\s+/).filter(Boolean);
+            let port = OPENCODE_DEFAULT_PORT;
+            let hostname = '127.0.0.1';
+            for (let i = 0; i < args.length; i++) {
+              if (args[i] === '--port' && i + 1 < args.length) {port = parseInt(args[i + 1], 10);}
+              if (args[i] === '--hostname' && i + 1 < args.length) {hostname = args[i + 1];}
+            }
+            if (port !== 0) {
+              results.push({ url: `http://${hostname}:${port}`, password: envPassword || undefined });
+            }
+          }
+        }
+      } catch { /* powershell not available or no process */ }
+    }
+
     // 3. Try default port 4096 only if binary is installed
     if (this.findBinaryPath()) {
       results.push({ url: `http://127.0.0.1:${OPENCODE_DEFAULT_PORT}`, password: envPassword || undefined });
@@ -369,8 +396,10 @@ export class OpenCodeServer {
 
     const devcontainerMode = vscode.workspace.getConfiguration('opencode-sidebar-web')
       .get('devcontainerMode', true);
+    const connectExistingLocal = vscode.workspace.getConfiguration('opencode-sidebar-web')
+      .get('connectExistingLocal', true);
 
-    if (this.isRemoteEnvironment() && devcontainerMode) {
+    if ((this.isRemoteEnvironment() || connectExistingLocal) && devcontainerMode) {
       const existing = await this.detectExistingServer();
       if (existing) {
         await this.connectToExisting(existing);
@@ -400,7 +429,9 @@ export class OpenCodeServer {
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
-    const args = ['serve', '--port', '0', '--hostname', this._hostname];
+    const serverPort = vscode.workspace.getConfiguration('opencode-sidebar-web')
+      .get('serverPort', OPENCODE_DEFAULT_PORT);
+    const args = ['serve', '--port', String(serverPort), '--hostname', this._hostname];
 
     this._outputChannel.appendLine(
       `Run manually to debug: ${binary} ${args.join(' ')}${workspaceFolder ? ` (cwd: ${workspaceFolder})` : ''}`
@@ -436,8 +467,14 @@ export class OpenCodeServer {
     });
 
     await this.waitForServer();
-    await this.startProxy();
-    await this.resolveWebviewUrl();
+    if (await this.checkNeedsProxy({ url: this.serverUrl })) {
+      this._outputChannel.appendLine('Server has frame-blocking headers, starting proxy...');
+      await this.startProxy();
+      await this.resolveWebviewUrl();
+    } else {
+      this._webviewUrl = this.serverUrl;
+      this._outputChannel.appendLine(`Direct connection (no proxy): ${this._webviewUrl}`);
+    }
 
     this._isRunning = true;
     this.updateStatusBar();
@@ -591,6 +628,15 @@ export class OpenCodeServer {
 
     if (this.process?.pid) {
       const pid = this.process.pid;
+      // Windows: kill the whole process tree (opencode spawns children)
+      if (platform() === 'win32') {
+        try {
+          execSync(
+            `powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"ParentProcessId=${pid}\\" | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"`,
+            { timeout: 8000 }
+          );
+        } catch { /* no children or powershell failed */ }
+      }
       try { process.kill(pid, 'SIGTERM'); } catch { /* already dead */ }
     }
 
@@ -616,7 +662,8 @@ export class OpenCodeServer {
     if (this._isRunning) {
       this._statusBarItem.text = '$(globe) OpenCode: Connected';
       this._statusBarItem.backgroundColor = undefined;
-      this._statusBarItem.tooltip = `OpenCode running on port ${this._port}`;
+      this._statusBarItem.tooltip = `OpenCode running on port ${this._port}` +
+        (this._proxyPort > 0 ? ` (proxy ${this._proxyPort})` : '');
       this._statusBarItem.show();
     } else {
       this._statusBarItem.text = '$(globe) OpenCode: Disconnected';
