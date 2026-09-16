@@ -44,6 +44,10 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
         vscode.commands.executeCommand(
           'workbench.action.openSettings', 'opencode-webui'
         );
+      } else if (msg.type === 'openWebuiSettings') {
+        this.postToBridge({ type: 'opencodeBridge', action: 'openSettings' });
+      } else if (msg.type === 'syncThemeToBridge') {
+        this.syncThemeToBridge();
       }
     });
 
@@ -65,6 +69,24 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
 
   get isVisible(): boolean {
     return this._panelVisible;
+  }
+
+  /** Queue a message for the webui iframe (same-origin via proxy bridge). */
+  private postToBridge(message: Record<string, unknown>): void {
+    this._lastBridgeMessage = message;
+    this._bridgeMessageSeq++;
+    this.render();
+  }
+
+  private _lastBridgeMessage: Record<string, unknown> | null = null;
+  private _bridgeMessageSeq = 0;
+
+  private syncThemeToBridge(): void {
+    // Determine VSCode theme kind and push it to the webui via bridge.
+    const kind = vscode.window.activeColorTheme.kind;
+    const scheme = kind === vscode.ColorThemeKind.Dark || kind === vscode.ColorThemeKind.HighContrast
+      ? 'dark' : 'light';
+    this.postToBridge({ type: 'opencodeBridge', colorScheme: scheme });
   }
 
   async show(): Promise<void> {
@@ -237,7 +259,8 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
     <span>${statusText}</span>
     <span class="spacer"></span>
     <a onclick="showLogs()">Logs</a>
-    <a onclick="openSettings()" style="margin-left:8px">Settings</a>
+    <a onclick="openSettings()" style="margin-left:8px" title="Extension settings (port, autostart...)">Settings</a>
+    <a onclick="openWebuiSettings()" style="margin-left:8px" title="Open the WebUI's own settings dialog (Ctrl+,)">WebUI</a>
     <a onclick="closePanel()" style="margin-left:8px">Close</a>
   </div>
 
@@ -263,6 +286,10 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
       vscode.postMessage({ type: 'openSettings' });
     }
 
+    function openWebuiSettings() {
+      vscode.postMessage({ type: 'openWebuiSettings' });
+    }
+
     function closePanel() {
       vscode.postMessage({ type: 'closePanel' });
     }
@@ -284,6 +311,39 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
     syncTheme();
     const obs = new MutationObserver(syncTheme);
     obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    const bridgeQueue = ${JSON.stringify(this._lastBridgeMessage ? [this._lastBridgeMessage] : [])};
+    let bridgeTries = 0;
+    function flushBridge() {
+      const iframe = document.getElementById('ocFrame');
+      if (!iframe || !iframe.src) { return; }
+      const origin = new URL(iframe.src).origin;
+      for (const m of bridgeQueue) {
+        iframe.contentWindow.postMessage(m, origin);
+      }
+    }
+    function tryBridge() {
+      if (bridgeQueue.length === 0) { return; }
+      bridgeTries++;
+      if (bridgeTries > 60) { return; }
+      try { flushBridge(); } catch (e) { /* retry */ }
+      setTimeout(tryBridge, 500);
+    }
+    iframeReady().then(tryBridge);
+    function iframeReady() {
+      return new Promise((resolve) => {
+        const iframe = document.getElementById('ocFrame');
+        if (iframe && iframe.src) { resolve(undefined); return; }
+        const obs2 = new MutationObserver(() => {
+          const f = document.getElementById('ocFrame');
+          if (f && f.src) { obs2.disconnect(); resolve(undefined); }
+        });
+        obs2.observe(document.body, { childList: true, subtree: true });
+      });
+    }
+    window.addEventListener('message', (event) => {
+      if (event.source && event.source !== window) { flushBridge(); }
+    });
   </script>
 </body>
 </html>`;

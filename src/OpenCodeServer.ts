@@ -16,6 +16,63 @@ const OPENCODE_PACKAGE = 'opencode-ai';
 const OPENCODE_DEFAULT_PORT = 4096;
 const HEALTH_ENDPOINT = '/global/health';
 
+/**
+ * Runs inside the proxied webui page (same origin as the webui).
+ * - Listens for messages from the extension host webview (parent).
+ * - Applies color scheme / theme to localStorage so settings persist.
+ * - Forwards "opencodeOpenSettings" as a synthetic Ctrl+, keydown so the
+ *   webui Command system opens its settings dialog inside the sidebar.
+ */
+const BRIDGE_SCRIPT_SOURCE = String.raw`
+(function () {
+  'use strict';
+  var APPLIED = false;
+  function applyScheme(scheme) {
+    try {
+      if (scheme === 'dark' || scheme === 'light' || scheme === 'system') {
+        localStorage.setItem('opencode-color-scheme', scheme);
+        document.documentElement.dataset.ocColorScheme = scheme;
+        if (scheme === 'dark') { document.documentElement.classList.add('dark'); }
+        else if (scheme === 'light') { document.documentElement.classList.remove('dark'); }
+      }
+    } catch (e) { /* ignore */ }
+  }
+  function applyThemeId(themeId) {
+    try {
+      if (themeId && typeof themeId === 'string') {
+        localStorage.setItem('opencode-theme-id', themeId);
+      }
+    } catch (e) { /* ignore */ }
+  }
+  function openSettingsDialog() {
+    try {
+      var ev = new KeyboardEvent('keydown', {
+        key: ',',
+        code: 'Comma',
+        ctrlKey: true,
+        metaKey: false,
+        altKey: false,
+        shiftKey: false,
+        bubbles: true,
+        cancelable: true
+      });
+      document.dispatchEvent(ev);
+    } catch (e) { /* ignore */ }
+  }
+  window.addEventListener('message', function (event) {
+    var data = event.data;
+    if (!data || typeof data !== 'object') { return; }
+    if (data.type === 'opencodeBridge') {
+      if (data.colorScheme) { applyScheme(data.colorScheme); }
+      if (data.themeId) { applyThemeId(data.themeId); }
+      if (data.action === 'openSettings') { openSettingsDialog(); }
+      APPLIED = true;
+    }
+  });
+  window.opencodeBridgeReady = true;
+})();
+`;
+
 interface DetectedServer {
   url: string;
   password?: string;
@@ -262,8 +319,12 @@ export class OpenCodeServer {
     this._processError = '';
 
     const needsProxy = await this.checkNeedsProxy(detected);
-    if (needsProxy) {
-      this._outputChannel.appendLine('Server has frame-blocking headers, starting proxy...');
+    if (needsProxy || this.bridgeEnabled()) {
+      if (needsProxy) {
+        this._outputChannel.appendLine('Server has frame-blocking headers, starting proxy...');
+      } else {
+        this._outputChannel.appendLine('Bridge enabled, starting proxy for webui settings...');
+      }
       await this.startProxy();
       await this.resolveWebviewUrl();
     } else {
@@ -381,6 +442,30 @@ export class OpenCodeServer {
   get isConnectedToExisting(): boolean { return this._existingServerUrl !== null; }
   get installTerminal(): vscode.Terminal | null { return this._installTerminal; }
 
+  /** Whether the webui-settings bridge (proxy + script injection) is enabled. */
+  bridgeEnabled(): boolean {
+    return vscode.workspace.getConfiguration('opencode-webui')
+      .get('webuiSettingsBridge', true);
+  }
+
+  /** Send a message to the bridge script inside the proxied webui iframe. */
+  sendToBridge(message: Record<string, unknown>): void {
+    // The panel listens for this and forwards it into the iframe via postMessage.
+    this._onDidChangeStatus.fire(this._isRunning);
+    this._pendingBridgeMessage = message;
+    this._bridgeMessageSeq++;
+  }
+
+  private _pendingBridgeMessage: Record<string, unknown> | null = null;
+  private _bridgeMessageSeq = 0;
+
+  get pendingBridgeMessage(): Record<string, unknown> | null {
+    return this._pendingBridgeMessage;
+  }
+  get bridgeMessageSeq(): number {
+    return this._bridgeMessageSeq;
+  }
+
   async start(): Promise<void> {
     if (this._isRunning) { return; }
 
@@ -467,8 +552,13 @@ export class OpenCodeServer {
     });
 
     await this.waitForServer();
-    if (await this.checkNeedsProxy({ url: this.serverUrl })) {
-      this._outputChannel.appendLine('Server has frame-blocking headers, starting proxy...');
+    const needsProxy = await this.checkNeedsProxy({ url: this.serverUrl });
+    if (needsProxy || this.bridgeEnabled()) {
+      if (needsProxy) {
+        this._outputChannel.appendLine('Server has frame-blocking headers, starting proxy...');
+      } else {
+        this._outputChannel.appendLine('Bridge enabled, starting proxy for webui settings...');
+      }
       await this.startProxy();
       await this.resolveWebviewUrl();
     } else {
@@ -568,6 +658,13 @@ export class OpenCodeServer {
         }, (proxyRes) => {
           const headers = { ...proxyRes.headers };
           for (const h of CSP_HEADERS) { delete headers[h]; }
+
+          const isHtml = (headers['content-type'] || '').includes('text/html');
+          if (isHtml && proxyRes.statusCode === 200) {
+            this.serveInjectedHtml(req, res, proxyRes, headers);
+            return;
+          }
+
           res.writeHead(proxyRes.statusCode || 200, {
             ...headers,
             'Access-Control-Allow-Origin': '*',
@@ -582,7 +679,9 @@ export class OpenCodeServer {
         req.pipe(proxyReq);
       });
 
-      this.proxy.listen(0, '127.0.0.1', () => {
+      const proxyPort = vscode.workspace.getConfiguration('opencode-webui')
+        .get<number>('proxyPort', 4097);
+      this.proxy.listen(proxyPort === 0 ? 0 : proxyPort, '127.0.0.1', () => {
         const addr = this.proxy!.address();
         if (addr && typeof addr === 'object') {
           this._proxyPort = addr.port;
@@ -592,6 +691,48 @@ export class OpenCodeServer {
         );
         resolve();
       });
+    });
+  }
+
+  /**
+   * Rewrites an HTML response, injecting the bridge script right after <head>.
+   * Runs the upstream body through the same response, keeping other headers.
+   */
+  private serveInjectedHtml(
+    _req: http.IncomingMessage,
+    res: http.ServerResponse,
+    proxyRes: http.IncomingMessage,
+    headers: Record<string, string | string[] | undefined>
+  ): void {
+    const chunks: Buffer[] = [];
+    proxyRes.on('data', (c: Buffer) => chunks.push(c));
+    proxyRes.on('end', () => {
+      try {
+        const body = Buffer.concat(chunks);
+        let html = body.toString('utf8');
+        const injection = `<script>(${BRIDGE_SCRIPT_SOURCE})</script>`;
+        if (/<head[^>]*>/i.test(html)) {
+          html = html.replace(/<head[^>]*>/i, (m) => m + injection);
+        } else {
+          html = injection + html;
+        }
+        const outHeaders = { ...headers };
+        delete outHeaders['content-length'];
+        delete outHeaders['transfer-encoding'];
+        res.writeHead(proxyRes.statusCode || 200, {
+          ...outHeaders,
+          'content-type': 'text/html; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
+        });
+        res.end(html);
+      } catch {
+        res.writeHead(502);
+        res.end('Bad Gateway');
+      }
+    });
+    proxyRes.on('error', () => {
+      res.writeHead(502);
+      res.end('Bad Gateway');
     });
   }
 

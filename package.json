@@ -179,6 +179,16 @@
           "type": "boolean",
           "default": true,
           "description": "Detect and connect to an existing OpenCode server (default port 4096) even in a local (non-remote) environment"
+        },
+        "opencode-webui.proxyPort": {
+          "type": "number",
+          "default": 4097,
+          "description": "Fixed port for the local proxy injected between the webview and the OpenCode server. The proxy strips frame-blocking headers and injects a settings/theme bridge script. 0 = random port. Use a fixed port so the WebUI keeps its browser-stored settings (color scheme, theme) across restarts."
+        },
+        "opencode-webui.webuiSettingsBridge": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the settings bridge: always route the webview through the local proxy and inject a script into the WebUI page that listens for theme sync and 'open WebUI settings' requests. Disable to connect the webview directly to the server (no bridge features)."
         }
       }
     }
