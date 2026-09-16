@@ -1,210 +1,210 @@
 {
-	"name": "opencode-sidebar-web-jt",
-	"displayName": "OpenCode Sidebar Web",
-	"description": "Integrates the OpenCode web UI into a right-side panel of VS Code. Fork with fixed port, direct connection and Windows process detection.",
-	"version": "0.7.2-jt.1",
-	"publisher": "jtian",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/agustin-gigena/opencode-sidebar-web"
-	},
-	"engines": {
-		"vscode": "^1.106.0"
-	},
-	"extensionKind": [
-		"workspace"
-	],
-	"icon": "media/icon.png",
-	"categories": [
-		"Other",
-		"Chat"
-	],
-	"activationEvents": [
-		"onStartupFinished",
-		"onCommand:opencode-sidebar-web.openPanel",
-		"onCommand:opencode-sidebar-web.startServer"
-	],
-	"main": "./out/extension.js",
-	"contributes": {
-		"viewsContainers": {
-			"secondarySidebar": [
-				{
-					"id": "opencode-sidebar-web",
-					"title": "OpenCode",
-					"icon": "media/icon.svg"
-				}
-			]
-		},
-		"views": {
-			"opencode-sidebar-web": [
-				{
-					"type": "webview",
-					"id": "opencode-sidebar-web.view",
-					"name": "OpenCode"
-				}
-			]
-		},
-		"commands": [
-			{
-				"command": "opencode-sidebar-web.openPanel",
-				"title": "OpenCode: Open Panel",
-				"icon": {
-					"light": "media/icon.svg",
-					"dark": "media/icon.svg"
-				}
-			},
-			{
-				"command": "opencode-sidebar-web.closePanel",
-				"title": "OpenCode: Close Panel",
-				"icon": {
-					"light": "media/icon-close.svg",
-					"dark": "media/icon-close.svg"
-				}
-			},
-			{
-				"command": "opencode-sidebar-web.startServer",
-				"title": "OpenCode: Start Server"
-			},
-			{
-				"command": "opencode-sidebar-web.stopServer",
-				"title": "OpenCode: Stop Server"
-			},
-			{
-				"command": "opencode-sidebar-web.restartServer",
-				"title": "OpenCode: Restart Server"
-			},
-			{
-				"command": "opencode-sidebar-web.openFile",
-				"title": "OpenCode: Open File"
-			},
-			{
-				"command": "opencode-sidebar-web.focusPanel",
-				"title": "OpenCode: Focus Panel"
-			},
-			{
-				"command": "opencode-sidebar-web.installBinary",
-				"title": "OpenCode: Install opencode binary"
-			}
-		],
-		"menus": {
-			"editor/title": [
-				{
-					"command": "opencode-sidebar-web.openPanel",
-					"group": "navigation",
-					"when": "!config.opencode-sidebar-web.hideButton"
-				}
-			],
-			"view/title": [
-				{
-					"command": "opencode-sidebar-web.startServer",
-					"when": "view == opencode-sidebar-web.view && !opencodeSidebarServerRunning",
-					"group": "navigation"
-				},
-				{
-					"command": "opencode-sidebar-web.stopServer",
-					"when": "view == opencode-sidebar-web.view && opencodeSidebarServerRunning",
-					"group": "navigation"
-				},
-				{
-					"command": "opencode-sidebar-web.restartServer",
-					"when": "view == opencode-sidebar-web.view && opencodeSidebarServerRunning",
-					"group": "navigation"
-				},
-				{
-					"command": "opencode-sidebar-web.installBinary",
-					"when": "view == opencode-sidebar-web.view && !opencodeSidebarBinaryInstalled",
-					"group": "navigation"
-				}
-			]
-		},
-		"keybindings": [
-			{
-				"command": "opencode-sidebar-web.openPanel",
-				"key": "ctrl+shift+o",
-				"mac": "cmd+shift+o"
-			}
-		],
-		"configuration": {
-			"title": "OpenCode Sidebar Web",
-			"properties": {
-				"opencode-sidebar-web.autoStart": {
-					"type": "boolean",
-					"default": false,
-					"description": "Start the OpenCode server automatically when VS Code opens"
-				},
-				"opencode-sidebar-web.hostname": {
-					"type": "string",
-					"default": "127.0.0.1",
-					"description": "Hostname for the OpenCode server"
-				},
-				"opencode-sidebar-web.hideButton": {
-					"type": "boolean",
-					"default": false,
-					"description": "Hide the OpenCode button in the editor title bar"
-				},
-				"opencode-sidebar-web.autoReconnect": {
-					"type": "boolean",
-					"default": true,
-					"description": "Retry connection automatically when the server goes down"
-				},
-				"opencode-sidebar-web.maxReconnectAttempts": {
-					"type": "number",
-					"default": 3,
-					"description": "Maximum number of reconnection attempts"
-				},
-				"opencode-sidebar-web.sidebarPosition": {
-					"type": "string",
-					"default": "right",
-					"enum": [
-						"right"
-					],
-					"description": "OpenCode always appears in the secondary sidebar (right side). This option is kept for compatibility."
-				},
-				"opencode-sidebar-web.devcontainerMode": {
-					"type": "boolean",
-					"default": true,
-					"description": "Automatically detect opencode running in a devcontainer/remote environment"
-				},
-				"opencode-sidebar-web.autoInstallInDevcontainer": {
-					"type": "boolean",
-					"default": true,
-					"description": "Automatically install opencode on activation in a devcontainer if not present"
-				},
-				"opencode-sidebar-web.serverPort": {
-					"type": "number",
-					"default": 4096,
-					"description": "Fixed port used when starting the OpenCode server (0 = random). Default 4096 matches opencode.json server.port, so browser settings like color scheme persist across restarts."
-				},
-				"opencode-sidebar-web.connectExistingLocal": {
-					"type": "boolean",
-					"default": true,
-					"description": "Detect and connect to an existing OpenCode server (default port 4096) even in a local (non-remote) environment"
-				}
-			}
-		}
-	},
-	"scripts": {
-		"vscode:prepublish": "npm run esbuild",
-		"compile": "tsc -p ./",
-		"watch": "tsc -watch -p ./",
-		"esbuild": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify --sourcemap",
-		"pretest": "npm run compile && npm run lint",
-		"lint": "eslint src",
-		"test": "vscode-test"
-	},
-	"devDependencies": {
-		"@types/mocha": "^10.0.10",
-		"@types/node": "^22.19.19",
-		"@types/vscode": "^1.106.0",
-		"@vscode/test-cli": "^0.0.12",
-		"@vscode/test-electron": "^2.5.2",
-		"@vscode/vsce": "^3.9.1",
-		"esbuild": "^0.28.0",
-		"eslint": "^9.39.3",
-		"typescript": "^5.9.3",
-		"typescript-eslint": "^8.56.1"
-	},
-	"dependencies": {
-		"opencode-ai": "^1.15.10"
-	}
+  "name": "opencode-webui",
+  "displayName": "OpenCode WebUI",
+  "description": "Integrates the OpenCode web UI into a right-side panel of VS Code. Fork with fixed port, direct connection and Windows process detection.",
+  "version": "0.7.2-jt.2",
+  "publisher": "jtian",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agustin-gigena/opencode-sidebar-web"
+  },
+  "engines": {
+    "vscode": "^1.106.0"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "icon": "media/icon.png",
+  "categories": [
+    "Other",
+    "Chat"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:opencode-sidebar-web.openPanel",
+    "onCommand:opencode-sidebar-web.startServer"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "secondarySidebar": [
+        {
+          "id": "opencode-sidebar-web",
+          "title": "OpenCode",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "opencode-sidebar-web": [
+        {
+          "type": "webview",
+          "id": "opencode-sidebar-web.view",
+          "name": "OpenCode"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "opencode-sidebar-web.openPanel",
+        "title": "OpenCode: Open Panel",
+        "icon": {
+          "light": "media/icon.svg",
+          "dark": "media/icon.svg"
+        }
+      },
+      {
+        "command": "opencode-sidebar-web.closePanel",
+        "title": "OpenCode: Close Panel",
+        "icon": {
+          "light": "media/icon-close.svg",
+          "dark": "media/icon-close.svg"
+        }
+      },
+      {
+        "command": "opencode-sidebar-web.startServer",
+        "title": "OpenCode: Start Server"
+      },
+      {
+        "command": "opencode-sidebar-web.stopServer",
+        "title": "OpenCode: Stop Server"
+      },
+      {
+        "command": "opencode-sidebar-web.restartServer",
+        "title": "OpenCode: Restart Server"
+      },
+      {
+        "command": "opencode-sidebar-web.openFile",
+        "title": "OpenCode: Open File"
+      },
+      {
+        "command": "opencode-sidebar-web.focusPanel",
+        "title": "OpenCode: Focus Panel"
+      },
+      {
+        "command": "opencode-sidebar-web.installBinary",
+        "title": "OpenCode: Install opencode binary"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "opencode-sidebar-web.openPanel",
+          "group": "navigation",
+          "when": "!config.opencode-sidebar-web.hideButton"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "opencode-sidebar-web.startServer",
+          "when": "view == opencode-sidebar-web.view && !opencodeSidebarServerRunning",
+          "group": "navigation"
+        },
+        {
+          "command": "opencode-sidebar-web.stopServer",
+          "when": "view == opencode-sidebar-web.view && opencodeSidebarServerRunning",
+          "group": "navigation"
+        },
+        {
+          "command": "opencode-sidebar-web.restartServer",
+          "when": "view == opencode-sidebar-web.view && opencodeSidebarServerRunning",
+          "group": "navigation"
+        },
+        {
+          "command": "opencode-sidebar-web.installBinary",
+          "when": "view == opencode-sidebar-web.view && !opencodeSidebarBinaryInstalled",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "opencode-sidebar-web.openPanel",
+        "key": "ctrl+shift+o",
+        "mac": "cmd+shift+o"
+      }
+    ],
+    "configuration": {
+      "title": "OpenCode Sidebar Web",
+      "properties": {
+        "opencode-sidebar-web.autoStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Start the OpenCode server automatically when VS Code opens"
+        },
+        "opencode-sidebar-web.hostname": {
+          "type": "string",
+          "default": "127.0.0.1",
+          "description": "Hostname for the OpenCode server"
+        },
+        "opencode-sidebar-web.hideButton": {
+          "type": "boolean",
+          "default": false,
+          "description": "Hide the OpenCode button in the editor title bar"
+        },
+        "opencode-sidebar-web.autoReconnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Retry connection automatically when the server goes down"
+        },
+        "opencode-sidebar-web.maxReconnectAttempts": {
+          "type": "number",
+          "default": 3,
+          "description": "Maximum number of reconnection attempts"
+        },
+        "opencode-sidebar-web.sidebarPosition": {
+          "type": "string",
+          "default": "right",
+          "enum": [
+            "right"
+          ],
+          "description": "OpenCode always appears in the secondary sidebar (right side). This option is kept for compatibility."
+        },
+        "opencode-sidebar-web.devcontainerMode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically detect opencode running in a devcontainer/remote environment"
+        },
+        "opencode-sidebar-web.autoInstallInDevcontainer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically install opencode on activation in a devcontainer if not present"
+        },
+        "opencode-sidebar-web.serverPort": {
+          "type": "number",
+          "default": 4096,
+          "description": "Fixed port used when starting the OpenCode server (0 = random). Default 4096 matches opencode.json server.port, so browser settings like color scheme persist across restarts."
+        },
+        "opencode-sidebar-web.connectExistingLocal": {
+          "type": "boolean",
+          "default": true,
+          "description": "Detect and connect to an existing OpenCode server (default port 4096) even in a local (non-remote) environment"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run esbuild",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "esbuild": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify --sourcemap",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.19.19",
+    "@types/vscode": "^1.106.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.9.1",
+    "esbuild": "^0.28.0",
+    "eslint": "^9.39.3",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
+  },
+  "dependencies": {
+    "opencode-ai": "^1.15.10"
+  }
 }

@@ -47,7 +47,7 @@ export class OpenCodeServer {
     this._statusBarItem = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left, 100
     );
-    this._statusBarItem.command = 'opencode-sidebar-web.focusPanel';
+    this._statusBarItem.command = 'opencode-webui.focusPanel';
     context.subscriptions.push(this._statusBarItem, this._outputChannel);
     this.updateStatusBar();
   }
@@ -391,12 +391,12 @@ export class OpenCodeServer {
     this._existingServerUrl = null;
     this._webviewUrl = '';
 
-    this._hostname = vscode.workspace.getConfiguration('opencode-sidebar-web')
+    this._hostname = vscode.workspace.getConfiguration('opencode-webui')
       .get('hostname', '127.0.0.1');
 
-    const devcontainerMode = vscode.workspace.getConfiguration('opencode-sidebar-web')
+    const devcontainerMode = vscode.workspace.getConfiguration('opencode-webui')
       .get('devcontainerMode', true);
-    const connectExistingLocal = vscode.workspace.getConfiguration('opencode-sidebar-web')
+    const connectExistingLocal = vscode.workspace.getConfiguration('opencode-webui')
       .get('connectExistingLocal', true);
 
     if ((this.isRemoteEnvironment() || connectExistingLocal) && devcontainerMode) {
@@ -429,7 +429,7 @@ export class OpenCodeServer {
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
-    const serverPort = vscode.workspace.getConfiguration('opencode-sidebar-web')
+    const serverPort = vscode.workspace.getConfiguration('opencode-webui')
       .get('serverPort', OPENCODE_DEFAULT_PORT);
     const args = ['serve', '--port', String(serverPort), '--hostname', this._hostname];
 

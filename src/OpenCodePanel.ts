@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { OpenCodeServer } from './OpenCodeServer';
 
 export class OpenCodePanel implements vscode.WebviewViewProvider {
-  public static readonly viewType = 'opencode-sidebar-web.view';
+  public static readonly viewType = 'opencode-webui.view';
   private _view: vscode.WebviewView | undefined;
   private _panelVisible = false;
   private _isStarting = false;
@@ -30,7 +30,7 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
 
     webviewView.webview.onDidReceiveMessage(async (msg) => {
       if (msg.type === 'closePanel') {
-        vscode.commands.executeCommand('opencode-sidebar-web.openPanel');
+        vscode.commands.executeCommand('opencode-webui.openPanel');
       } else if (msg.type === 'startServer') {
         this._errorMessage = '';
         this._serverCrashed = false;
@@ -42,7 +42,7 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
         this._server.outputChannel.show();
       } else if (msg.type === 'openSettings') {
         vscode.commands.executeCommand(
-          'workbench.action.openSettings', 'opencode-sidebar-web'
+          'workbench.action.openSettings', 'opencode-webui'
         );
       }
     });
@@ -71,7 +71,7 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
     if (this._panelVisible) {
       return;
     }
-    await vscode.commands.executeCommand('workbench.view.extension.opencode-sidebar-web');
+    await vscode.commands.executeCommand('workbench.view.extension.opencode-webui');
   }
 
   async close(): Promise<void> {

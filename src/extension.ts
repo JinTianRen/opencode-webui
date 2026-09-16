@@ -16,9 +16,9 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.registerWebviewViewProvider(OpenCodePanel.viewType, panel)
   );
 
-  const devcontainerMode = vscode.workspace.getConfiguration('opencode-sidebar-web')
+  const devcontainerMode = vscode.workspace.getConfiguration('opencode-webui')
     .get('devcontainerMode', true);
-  const connectExistingLocal = vscode.workspace.getConfiguration('opencode-sidebar-web')
+  const connectExistingLocal = vscode.workspace.getConfiguration('opencode-webui')
     .get('connectExistingLocal', true);
 
   if ((server.isRemoteEnvironment() || connectExistingLocal) && devcontainerMode) {
@@ -27,7 +27,7 @@ export async function activate(context: vscode.ExtensionContext) {
       await server.connectToExisting(existing);
       panel?.render();
     } else if (!server.isBinaryInstalled() && server.isRemoteEnvironment()) {
-      const autoInstall = vscode.workspace.getConfiguration('opencode-sidebar-web')
+      const autoInstall = vscode.workspace.getConfiguration('opencode-webui')
         .get('autoInstallInDevcontainer', true);
       if (autoInstall) {
         try {
@@ -66,7 +66,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('opencode-sidebar-web.openPanel', async () => {
+    vscode.commands.registerCommand('opencode-webui.openPanel', async () => {
       if (panel!.isVisible) {
         panel!.close();
         return;
@@ -79,23 +79,23 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('opencode-sidebar-web.focusPanel', async () => {
+    vscode.commands.registerCommand('opencode-webui.focusPanel', async () => {
       await panel!.show();
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('opencode-sidebar-web.closePanel', () => {
+    vscode.commands.registerCommand('opencode-webui.closePanel', () => {
       panel!.close();
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('opencode-sidebar-web.startServer', startServer)
+    vscode.commands.registerCommand('opencode-webui.startServer', startServer)
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('opencode-sidebar-web.stopServer', async () => {
+    vscode.commands.registerCommand('opencode-webui.stopServer', async () => {
       reconnectCanceled = true;
       panel?.clearState();
       await server?.stop();
@@ -104,7 +104,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('opencode-sidebar-web.restartServer', async () => {
+    vscode.commands.registerCommand('opencode-webui.restartServer', async () => {
       reconnectCanceled = true;
       panel?.clearState();
       await server?.restart();
@@ -113,14 +113,14 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('opencode-sidebar-web.openFile', async (uri: vscode.Uri | string) => {
+    vscode.commands.registerCommand('opencode-webui.openFile', async (uri: vscode.Uri | string) => {
       const fileUri = typeof uri === 'string' ? vscode.Uri.parse(uri) : uri;
       await vscode.commands.executeCommand('vscode.open', fileUri);
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('opencode-sidebar-web.installBinary', async () => {
+    vscode.commands.registerCommand('opencode-webui.installBinary', async () => {
       if (server!.isBinaryInstalled()) {
         const action = await vscode.window.showInformationMessage(
           'OpenCode is already installed. Reinstall?',
@@ -179,7 +179,7 @@ async function startServer(): Promise<void> {
 let reconnectCanceled = false;
 
 async function attemptReconnect(): Promise<void> {
-  const config = vscode.workspace.getConfiguration('opencode-sidebar-web');
+  const config = vscode.workspace.getConfiguration('opencode-webui');
   if (!config.get('autoReconnect', true)) { return; }
 
   const maxAttempts = config.get('maxReconnectAttempts', 3);
@@ -195,7 +195,7 @@ async function attemptReconnect(): Promise<void> {
 }
 
 function positionPanel(): void {
-  const config = vscode.workspace.getConfiguration('opencode-sidebar-web');
+  const config = vscode.workspace.getConfiguration('opencode-webui');
   if (config.get('autoStart', false)) {
     server!.start()
       .then(() => panel?.render())

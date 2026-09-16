@@ -7,17 +7,17 @@ suite('Extension Test Suite', () => {
   vscode.window.showInformationMessage('Start all tests.');
 
   test('Commands are registered', async () => {
-    const ext = vscode.extensions.getExtension('agustin-gigena.opencode-sidebar-web');
+    const ext = vscode.extensions.getExtension('jtian.opencode-webui');
     if (ext && !ext.isActive) {
       await ext.activate();
     }
     const commands = await vscode.commands.getCommands();
-    assert.ok(commands.includes('opencode-sidebar-web.openPanel'));
-    assert.ok(commands.includes('opencode-sidebar-web.closePanel'));
-    assert.ok(commands.includes('opencode-sidebar-web.startServer'));
-    assert.ok(commands.includes('opencode-sidebar-web.stopServer'));
-    assert.ok(commands.includes('opencode-sidebar-web.restartServer'));
-    assert.ok(commands.includes('opencode-sidebar-web.openFile'));
+    assert.ok(commands.includes('opencode-webui.openPanel'));
+    assert.ok(commands.includes('opencode-webui.closePanel'));
+    assert.ok(commands.includes('opencode-webui.startServer'));
+    assert.ok(commands.includes('opencode-webui.stopServer'));
+    assert.ok(commands.includes('opencode-webui.restartServer'));
+    assert.ok(commands.includes('opencode-webui.openFile'));
   });
 });
 
