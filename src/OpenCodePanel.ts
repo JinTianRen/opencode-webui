@@ -45,9 +45,7 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
           'workbench.action.openSettings', 'opencode-webui'
         );
       } else if (msg.type === 'openWebuiSettings') {
-        this.postToBridge({ type: 'opencodeBridge', action: 'openSettings' });
-      } else if (msg.type === 'syncThemeToBridge') {
-        this.syncThemeToBridge();
+        this.openWebuiSettingsTab();
       }
     });
 
@@ -71,22 +69,68 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
     return this._panelVisible;
   }
 
-  /** Queue a message for the webui iframe (same-origin via proxy bridge). */
-  private postToBridge(message: Record<string, unknown>): void {
-    this._lastBridgeMessage = message;
-    this._bridgeMessageSeq++;
-    this.render();
-  }
+  /** Open the WebUI's own settings dialog in a new editor tab. */
+  private openWebuiSettingsTab(): void {
+    if (!this._server.isRunning) { return; }
+    const url = this._server.webviewUrl;
+    if (!url) { return; }
 
-  private _lastBridgeMessage: Record<string, unknown> | null = null;
-  private _bridgeMessageSeq = 0;
+    const panel = vscode.window.createWebviewPanel(
+      'opencode-webui.settings',
+      'OpenCode Settings',
+      vscode.ViewColumn.Active,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+      }
+    );
 
-  private syncThemeToBridge(): void {
-    // Determine VSCode theme kind and push it to the webui via bridge.
-    const kind = vscode.window.activeColorTheme.kind;
-    const scheme = kind === vscode.ColorThemeKind.Dark || kind === vscode.ColorThemeKind.HighContrast
-      ? 'dark' : 'light';
-    this.postToBridge({ type: 'opencodeBridge', colorScheme: scheme });
+    const origin = (() => { try { return new URL(url).origin; } catch { return '*'; } })();
+
+    panel.webview.html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html,body { height:100%; width:100%; overflow:hidden; background:var(--vscode-editor-background,#1e1e1e); }
+    iframe { width:100%; height:100%; border:none; }
+  </style>
+</head>
+<body>
+  <iframe id="ocFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+    src="${url}${url.includes('?') ? '&' : '?'}opencode-settings=1"></iframe>
+  <script>
+    (function () {
+      var origin = ${JSON.stringify(origin)};
+      var sent = false;
+      function ping() {
+        var f = document.getElementById('ocFrame');
+        if (f && f.contentWindow) {
+          f.contentWindow.postMessage({ type: 'opencodeBridge', action: 'openSettings' }, origin);
+        }
+      }
+      // Keep pinging for a while: the bridge script ignores messages
+      // until the webui app has mounted its command handlers.
+      var tries = 0;
+      var timer = setInterval(function () {
+        tries++;
+        ping();
+        if (tries > 40) { clearInterval(timer); }
+      }, 500);
+      // As soon as the bridge reports readiness, stop pinging.
+      window.addEventListener('message', function (event) {
+        if (event.data && event.data.type === 'opencodeBridgeReady') {
+          ping();
+          clearInterval(timer);
+        }
+      });
+      // Re-open settings if the user closes the dialog inside the tab.
+      setInterval(function () { ping(); }, 5000);
+    })();
+  </script>
+</body>
+</html>`;
   }
 
   async show(): Promise<void> {
@@ -260,7 +304,7 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
     <span class="spacer"></span>
     <a onclick="showLogs()">Logs</a>
     <a onclick="openSettings()" style="margin-left:8px" title="Extension settings (port, autostart...)">Settings</a>
-    <a onclick="openWebuiSettings()" style="margin-left:8px" title="Open the WebUI's own settings dialog (Ctrl+,)">WebUI</a>
+    <a onclick="openWebuiSettings()" style="margin-left:8px" title="Open the WebUI's own settings in a new tab">WebUI</a>
     <a onclick="closePanel()" style="margin-left:8px">Close</a>
   </div>
 
@@ -293,57 +337,6 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
     function closePanel() {
       vscode.postMessage({ type: 'closePanel' });
     }
-
-    function syncTheme() {
-      const classes = document.body.className;
-      const theme = classes.includes('vscode-dark') ? 'dark'
-        : classes.includes('vscode-high-contrast') ? 'high-contrast'
-        : 'light';
-      const iframe = document.getElementById('ocFrame');
-      if (iframe && iframe.contentWindow) {
-        const origin = iframe.src ? new URL(iframe.src).origin : '*';
-        iframe.contentWindow.postMessage(
-          { type: 'opencodeTheme', theme, source: 'vscode' }, origin
-        );
-      }
-    }
-
-    syncTheme();
-    const obs = new MutationObserver(syncTheme);
-    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-
-    const bridgeQueue = ${JSON.stringify(this._lastBridgeMessage ? [this._lastBridgeMessage] : [])};
-    let bridgeTries = 0;
-    function flushBridge() {
-      const iframe = document.getElementById('ocFrame');
-      if (!iframe || !iframe.src) { return; }
-      const origin = new URL(iframe.src).origin;
-      for (const m of bridgeQueue) {
-        iframe.contentWindow.postMessage(m, origin);
-      }
-    }
-    function tryBridge() {
-      if (bridgeQueue.length === 0) { return; }
-      bridgeTries++;
-      if (bridgeTries > 60) { return; }
-      try { flushBridge(); } catch (e) { /* retry */ }
-      setTimeout(tryBridge, 500);
-    }
-    iframeReady().then(tryBridge);
-    function iframeReady() {
-      return new Promise((resolve) => {
-        const iframe = document.getElementById('ocFrame');
-        if (iframe && iframe.src) { resolve(undefined); return; }
-        const obs2 = new MutationObserver(() => {
-          const f = document.getElementById('ocFrame');
-          if (f && f.src) { obs2.disconnect(); resolve(undefined); }
-        });
-        obs2.observe(document.body, { childList: true, subtree: true });
-      });
-    }
-    window.addEventListener('message', (event) => {
-      if (event.source && event.source !== window) { flushBridge(); }
-    });
   </script>
 </body>
 </html>`;

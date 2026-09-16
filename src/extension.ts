@@ -16,6 +16,19 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.window.registerWebviewViewProvider(OpenCodePanel.viewType, panel)
   );
 
+  server.onDidChangeStatus((running) => {
+    vscode.commands.executeCommand('setContext', 'opencodeSidebarServerRunning', running);
+    if (running) {
+      reconnectCanceled = false;
+      serverWasEverRunning = true;
+      panel?.clearState();
+      panel?.render();
+    } else if (serverWasEverRunning) {
+      panel?.markCrashed();
+      attemptReconnect();
+    }
+  });
+
   const devcontainerMode = vscode.workspace.getConfiguration('opencode-webui')
     .get('devcontainerMode', true);
   const connectExistingLocal = vscode.workspace.getConfiguration('opencode-webui')
@@ -143,19 +156,6 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     })
   );
-
-  server.onDidChangeStatus((running) => {
-    vscode.commands.executeCommand('setContext', 'opencodeSidebarServerRunning', running);
-    if (running) {
-      reconnectCanceled = false;
-      serverWasEverRunning = true;
-      panel?.clearState();
-      panel?.render();
-    } else if (serverWasEverRunning) {
-      panel?.markCrashed();
-      attemptReconnect();
-    }
-  });
 
   positionPanel();
 }

@@ -20,13 +20,19 @@ const HEALTH_ENDPOINT = '/global/health';
  * Runs inside the proxied webui page (same origin as the webui).
  * - Listens for messages from the extension host webview (parent).
  * - Applies color scheme / theme to localStorage so settings persist.
- * - Forwards "opencodeOpenSettings" as a synthetic Ctrl+, keydown so the
- *   webui Command system opens its settings dialog inside the sidebar.
+ * - Opens the webui settings dialog on demand: either via a synthetic
+ *   Ctrl+, keydown (handled by the webui Command system) or automatically
+ *   when the page is loaded with ?opencode-settings=1 (settings tab mode).
  */
 const BRIDGE_SCRIPT_SOURCE = String.raw`
 (function () {
   'use strict';
-  var APPLIED = false;
+
+  var SETTINGS_MODE = false;
+  try {
+    SETTINGS_MODE = /[?&]opencode-settings=1(?:[&#]|$)/.test(window.location.search);
+  } catch (e) { /* ignore */ }
+
   function applyScheme(scheme) {
     try {
       if (scheme === 'dark' || scheme === 'light' || scheme === 'system') {
@@ -37,6 +43,7 @@ const BRIDGE_SCRIPT_SOURCE = String.raw`
       }
     } catch (e) { /* ignore */ }
   }
+
   function applyThemeId(themeId) {
     try {
       if (themeId && typeof themeId === 'string') {
@@ -44,7 +51,8 @@ const BRIDGE_SCRIPT_SOURCE = String.raw`
       }
     } catch (e) { /* ignore */ }
   }
-  function openSettingsDialog() {
+
+  function dispatchOpenSettings() {
     try {
       var ev = new KeyboardEvent('keydown', {
         key: ',',
@@ -59,16 +67,87 @@ const BRIDGE_SCRIPT_SOURCE = String.raw`
       document.dispatchEvent(ev);
     } catch (e) { /* ignore */ }
   }
+
+  // ---- Settings-tab mode: open + keep the settings dialog, fullscreen it ----
+  var styleEl = null;
+  function ensureSettingsStyle() {
+    if (styleEl) { return; }
+    styleEl = document.createElement('style');
+    styleEl.id = 'opencode-settings-mode-style';
+    styleEl.textContent = [
+      '[data-slot="dialog-content"], .dialog-content { max-width: 100vw !important; width: 100vw !important; height: 100vh !important; max-height: 100vh !important; margin: 0 !important; border-radius: 0 !important; }'
+    ].join('\n');
+    document.head.appendChild(styleEl);
+  }
+
+  function findSettingsDialog() {
+    var dialogs = document.querySelectorAll('dialog[open], [role="dialog"]');
+    for (var i = 0; i < dialogs.length; i++) {
+      var d = dialogs[i];
+      var comp = d.getAttribute('data-component') || '';
+      var cls = d.className || '';
+      if (comp.indexOf('settings') !== -1 || ('' + cls).indexOf('settings') !== -1) {
+        return d;
+      }
+    }
+    return null;
+  }
+
+  function settingsDialogOpen() {
+    return findSettingsDialog() !== null;
+  }
+
+  var openAttempts = 0;
+  function tryOpenSettings() {
+    if (settingsDialogOpen()) { return; }
+    openAttempts++;
+    if (openAttempts > 120) { return; }
+    dispatchOpenSettings();
+    setTimeout(tryOpenSettings, 1000);
+  }
+
+  if (SETTINGS_MODE) {
+    // Hide the main UI chrome; only the settings dialog matters here.
+    var css = document.createElement('style');
+    css.textContent = [
+      'body > div:not(:has([data-component*="settings"], [role="dialog"])):not([data-slot="dialog-overlay"]) { display: none !important; }',
+      '[data-slot="dialog-overlay"], dialog::backdrop { background: transparent !important; backdrop-filter: none !important; }'
+    ].join('\n');
+    document.addEventListener('DOMContentLoaded', function () {
+      document.head.appendChild(css);
+      ensureSettingsStyle();
+      tryOpenSettings();
+    });
+    // Keep re-opening while the tab lives (user may close the dialog).
+    setInterval(function () {
+      if (openAttempts <= 120 && !settingsDialogOpen()) {
+        openAttempts = 0;
+        tryOpenSettings();
+      }
+    }, 2000);
+  }
+
   window.addEventListener('message', function (event) {
     var data = event.data;
     if (!data || typeof data !== 'object') { return; }
     if (data.type === 'opencodeBridge') {
       if (data.colorScheme) { applyScheme(data.colorScheme); }
       if (data.themeId) { applyThemeId(data.themeId); }
-      if (data.action === 'openSettings') { openSettingsDialog(); }
-      APPLIED = true;
+      if (data.action === 'openSettings') {
+        if (SETTINGS_MODE) {
+          openAttempts = 0;
+          tryOpenSettings();
+        } else {
+          dispatchOpenSettings();
+        }
+      }
+    } else if (data.type === 'opencodeBridgePing' && window.parent !== window) {
+      try {
+        event.source.postMessage({ type: 'opencodeBridgeReady' }, event.origin);
+      } catch (e) { /* ignore */ }
     }
   });
+
   window.opencodeBridgeReady = true;
 })();
 `;
@@ -448,24 +527,6 @@ export class OpenCodeServer {
       .get('webuiSettingsBridge', true);
   }
 
-  /** Send a message to the bridge script inside the proxied webui iframe. */
-  sendToBridge(message: Record<string, unknown>): void {
-    // The panel listens for this and forwards it into the iframe via postMessage.
-    this._onDidChangeStatus.fire(this._isRunning);
-    this._pendingBridgeMessage = message;
-    this._bridgeMessageSeq++;
-  }
-
-  private _pendingBridgeMessage: Record<string, unknown> | null = null;
-  private _bridgeMessageSeq = 0;
-
-  get pendingBridgeMessage(): Record<string, unknown> | null {
-    return this._pendingBridgeMessage;
-  }
-  get bridgeMessageSeq(): number {
-    return this._bridgeMessageSeq;
-  }
-
   async start(): Promise<void> {
     if (this._isRunning) { return; }
 
@@ -710,7 +771,7 @@ export class OpenCodeServer {
       try {
         const body = Buffer.concat(chunks);
         let html = body.toString('utf8');
-        const injection = `<script>(${BRIDGE_SCRIPT_SOURCE})</script>`;
+        const injection = `<script>${BRIDGE_SCRIPT_SOURCE}</script>`;
         if (/<head[^>]*>/i.test(html)) {
           html = html.replace(/<head[^>]*>/i, (m) => m + injection);
         } else {
