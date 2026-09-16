@@ -527,6 +527,31 @@ export class OpenCodeServer {
       .get('webuiSettingsBridge', true);
   }
 
+  /**
+   * Ensures the settings bridge proxy is reachable. If the proxy died
+   * (e.g. after a window reload raced with deactivation), restarts it
+   * and re-resolves the webview URL. Returns the URL to load.
+   */
+  async ensureProxyAlive(): Promise<string> {
+    const url = this.webviewUrl;
+    if (!url || !this.bridgeEnabled()) { return url; }
+
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(2000) });
+      if (res.ok) { return url; }
+    } catch {
+      this._outputChannel.appendLine('Bridge proxy is not responding, restarting...');
+    }
+
+    this.stopProxy();
+    this._proxyPort = 0;
+    this._webviewUrl = '';
+    await this.startProxy();
+    await this.resolveWebviewUrl();
+    this._outputChannel.appendLine(`Bridge proxy restarted at ${this.proxyUrl}`);
+    return this.webviewUrl;
+  }
+
   async start(): Promise<void> {
     if (this._isRunning) { return; }
 
@@ -698,61 +723,82 @@ export class OpenCodeServer {
   }
 
   private async startProxy(targetUrl?: string): Promise<void> {
-    return new Promise((resolve) => {
-      this.proxy = http.createServer((req, res) => {
-        if (req.method === 'OPTIONS') {
-          res.writeHead(204, {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': '*',
-            'Access-Control-Allow-Headers': '*',
-            'Access-Control-Max-Age': '86400',
-          });
-          res.end();
+    const proxyPort = vscode.workspace.getConfiguration('opencode-webui')
+      .get<number>('proxyPort', 4097);
+    const requestedPort = proxyPort === 0 ? 0 : proxyPort;
+
+    const listenProxy = (server: http.Server, port: number) =>
+      new Promise<number>((res, rej) => {
+        server.once('error', rej);
+        server.listen(port, '127.0.0.1', () => {
+          const addr = server.address();
+          res(addr && typeof addr === 'object' ? addr.port : port);
+        });
+      });
+
+    const handler = (req: http.IncomingMessage, res: http.ServerResponse): void => {
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204, {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': '*',
+          'Access-Control-Allow-Headers': '*',
+          'Access-Control-Max-Age': '86400',
+        });
+        res.end();
+        return;
+      }
+
+      const upstream = targetUrl || this.serverUrl;
+      const target = `${upstream}${req.url}`;
+      const proxyReq = http.request(target, {
+        method: req.method,
+        headers: { ...req.headers, host: `${this._hostname}:${this._port}` },
+      }, (proxyRes) => {
+        const headers = { ...proxyRes.headers };
+        for (const h of CSP_HEADERS) { delete headers[h]; }
+
+        const isHtml = (headers['content-type'] || '').includes('text/html');
+        if (isHtml && proxyRes.statusCode === 200) {
+          this.serveInjectedHtml(req, res, proxyRes, headers);
           return;
         }
 
-        const upstream = targetUrl || this.serverUrl;
-        const target = `${upstream}${req.url}`;
-        const proxyReq = http.request(target, {
-          method: req.method,
-          headers: { ...req.headers, host: `${this._hostname}:${this._port}` },
-        }, (proxyRes) => {
-          const headers = { ...proxyRes.headers };
-          for (const h of CSP_HEADERS) { delete headers[h]; }
-
-          const isHtml = (headers['content-type'] || '').includes('text/html');
-          if (isHtml && proxyRes.statusCode === 200) {
-            this.serveInjectedHtml(req, res, proxyRes, headers);
-            return;
-          }
-
-          res.writeHead(proxyRes.statusCode || 200, {
-            ...headers,
-            'Access-Control-Allow-Origin': '*',
-            'access-control-expose-headers': '*',
-          });
-          proxyRes.pipe(res);
+        res.writeHead(proxyRes.statusCode || 200, {
+          ...headers,
+          'Access-Control-Allow-Origin': '*',
+          'access-control-expose-headers': '*',
         });
-        proxyReq.on('error', () => {
-          res.writeHead(502);
-          res.end('Bad Gateway');
-        });
-        req.pipe(proxyReq);
+        proxyRes.pipe(res);
       });
+      proxyReq.on('error', () => {
+        res.writeHead(502);
+        res.end('Bad Gateway');
+      });
+      req.pipe(proxyReq);
+    };
 
-      const proxyPort = vscode.workspace.getConfiguration('opencode-webui')
-        .get<number>('proxyPort', 4097);
-      this.proxy.listen(proxyPort === 0 ? 0 : proxyPort, '127.0.0.1', () => {
-        const addr = this.proxy!.address();
-        if (addr && typeof addr === 'object') {
-          this._proxyPort = addr.port;
-        }
+    let server = this.proxy ?? http.createServer(handler);
+    this.proxy = server;
+    try {
+      this._proxyPort = await listenProxy(server, requestedPort);
+    } catch (err) {
+      const e = err as NodeJS.ErrnoException;
+      if (e.code === 'EADDRINUSE' && requestedPort !== 0) {
         this._outputChannel.appendLine(
-          `Proxy listening on http://127.0.0.1:${this._proxyPort}`
+          `Proxy port ${requestedPort} is in use, falling back to a random port`
         );
-        resolve();
-      });
-    });
+        server.close();
+        server = http.createServer(handler);
+        this.proxy = server;
+        this._proxyPort = await listenProxy(server, 0);
+      } else {
+        this._outputChannel.appendLine(`Proxy error: ${e.message}`);
+        return;
+      }
+    }
+    this._outputChannel.appendLine(
+      `Proxy listening on http://127.0.0.1:${this._proxyPort}`
+    );
   }
 
   /**

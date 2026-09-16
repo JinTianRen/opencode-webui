@@ -45,7 +45,7 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
           'workbench.action.openSettings', 'opencode-webui'
         );
       } else if (msg.type === 'openWebuiSettings') {
-        this.openWebuiSettingsTab();
+        void this.openWebuiSettingsTab();
       }
     });
 
@@ -70,9 +70,11 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
   }
 
   /** Open the WebUI's own settings dialog in a new editor tab. */
-  private openWebuiSettingsTab(): void {
+  private async openWebuiSettingsTab(): Promise<void> {
     if (!this._server.isRunning) { return; }
-    const url = this._server.webviewUrl;
+    // Make sure the bridge proxy is up before loading the iframe,
+    // restarting it if VSCode was reloaded or the proxy died.
+    const url = await this._server.ensureProxyAlive();
     if (!url) { return; }
 
     const panel = vscode.window.createWebviewPanel(
