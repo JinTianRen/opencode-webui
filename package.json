@@ -2,7 +2,7 @@
   "name": "opencode-webui",
   "displayName": "OpenCode WebUI",
   "description": "Integrates the OpenCode web UI into a right-side panel of VS Code. Fork with fixed port, direct connection and Windows process detection.",
-  "version": "0.7.2-jt.2",
+  "version": "1.0.0",
   "publisher": "jtian",
   "repository": {
     "type": "git",
