@@ -1,10 +1,29 @@
 # Change Log
 
-All notable changes to the "opencode-sidebar-web" extension will be documented in this file.
+All notable changes to the "opencode-webui" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-09-17
+
+Fork of agustin-gigena/opencode-sidebar-web v0.7.2, rebranded as `jtian.opencode-webui`.
+
+### Added
+- Fixed server port setting (`opencode-webui.serverPort`, default 4096) so browser-stored WebUI settings persist across restarts
+- Fixed-port local proxy (`opencode-webui.proxyPort`, default 4097) that strips frame-blocking headers and injects a bridge script into the WebUI page
+- WebUI settings bridge (`opencode-webui.webuiSettingsBridge`): "WebUI" button opens the OpenCode settings dialog in a dedicated editor tab (simulated `Ctrl+,`, fullscreen layout, all settings interactive)
+- Live settings sync: editing settings in the settings tab auto-reloads the sidebar via storage events
+- Windows process detection (CIM) to connect to an existing local server
+- Child process tree cleanup on stop
+- Proxy self-healing: `ensureProxyAlive` restarts a dead proxy when opening the settings tab; fixed-port retry (10x300ms) instead of random-port fallback
+- Bilingual (English/Chinese) setting descriptions
+
+### Changed
+- Status bar shows the fixed server port
+- All settings/command IDs renamed from `opencode-sidebar-web.*` to `opencode-webui.*`
+- Spanish UI strings translated to English
 
 ## [0.7.1] - 2026-05-24
 
