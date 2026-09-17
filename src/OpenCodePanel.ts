@@ -317,7 +317,6 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
     <a onclick="showLogs()">Logs</a>
     <a onclick="openSettings()" style="margin-left:8px" title="Extension settings (port, autostart...)">Settings</a>
     <a onclick="openWebuiSettings()" style="margin-left:8px" title="Open the WebUI's own settings in a new tab">WebUI</a>
-    <a onclick="closePanel()" style="margin-left:8px">Close</a>
   </div>
 
   <iframe id="ocFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
@@ -344,10 +343,6 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
 
     function openWebuiSettings() {
       vscode.postMessage({ type: 'openWebuiSettings' });
-    }
-
-    function closePanel() {
-      vscode.postMessage({ type: 'closePanel' });
     }
   </script>
 </body>
