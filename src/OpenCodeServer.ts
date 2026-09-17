@@ -154,6 +154,24 @@ const BRIDGE_SCRIPT_SOURCE = String.raw`
     }
   });
 
+  // ---- Live settings sync across same-origin pages ----
+  // The webui never listens to "storage" events, so changes made in the
+  // settings tab (a separate page on the same proxy origin) are not picked
+  // up by the running sidebar. Refresh the page when a settings-relevant
+  // localStorage key changes in ANOTHER same-origin page. The writing page
+  // itself gets no event, so the settings tab stays untouched.
+  window.addEventListener('storage', function (event) {
+    try {
+      var k = event.key || '';
+      if (k === 'settings.v3' ||
+          k === 'opencode-color-scheme' ||
+          k === 'opencode-theme-id' ||
+          k.indexOf('opencode.') === 0) {
+        if (!SETTINGS_MODE) { window.location.reload(); }
+      }
+    } catch (e) { /* ignore */ }
+  });
+
   window.opencodeBridgeReady = true;
 })();
 `;
