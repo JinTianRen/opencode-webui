@@ -116,7 +116,7 @@ const BRIDGE_SCRIPT_SOURCE = String.raw`
     // Hide the main UI chrome; only the settings dialog matters here.
     var css = document.createElement('style');
     css.textContent = [
-      'body > div:not(:has([data-component*="settings"], [role="dialog"])):not([data-slot="dialog-overlay"]) { display: none !important; }',
+      'body > div:not(:has([data-component*="settings"], [role="dialog"], [data-popper-positioner], [data-component="menu-v2-content"])):not([data-slot="dialog-overlay"]) { display: none !important; }',
       '[data-slot="dialog-overlay"], dialog::backdrop { background: transparent !important; backdrop-filter: none !important; }'
     ].join('\n');
     document.addEventListener('DOMContentLoaded', function () {
