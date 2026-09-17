@@ -75,7 +75,13 @@ const BRIDGE_SCRIPT_SOURCE = String.raw`
     styleEl = document.createElement('style');
     styleEl.id = 'opencode-settings-mode-style';
     styleEl.textContent = [
-      '[data-slot="dialog-content"], .dialog-content { max-width: 100vw !important; width: 100vw !important; height: 100vh !important; max-height: 100vh !important; margin: 0 !important; border-radius: 0 !important; }'
+      // The container layer is where width/height are clamped by
+      // [data-size=x-large] [data-slot=dialog-container]
+      // { width:min(100vw - 32px, 980px); height:min(100vh - 92px, 600px) }
+      '[data-slot="dialog-container"] { width: 100vw !important; max-width: 100vw !important; height: 100vh !important; max-height: 100vh !important; margin: 0 !important; border-radius: 0 !important; }',
+      '[data-slot="dialog-content"] { width: 100% !important; height: 100% !important; max-height: 100% !important; min-height: 0 !important; margin: 0 !important; border-radius: 0 !important; }',
+      '.settings-v2-dialog, .settings-dialog { width: 100% !important; height: 100% !important; max-height: 100% !important; }',
+      '.settings-v2-panel { max-height: 100% !important; }'
     ].join('\n');
     document.head.appendChild(styleEl);
   }
