@@ -146,27 +146,32 @@
         "opencode-webui.autoStart": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Start the OpenCode server automatically when VS Code opens\n\nVS Code 启动时自动启动 OpenCode 服务器"
+          "markdownDescription": "Start the OpenCode server automatically when VS Code opens\n\nVS Code 启动时自动启动 OpenCode 服务器",
+          "order": 0
         },
         "opencode-webui.hostname": {
           "type": "string",
           "default": "127.0.0.1",
-          "markdownDescription": "Hostname for the OpenCode server\n\nOpenCode 服务器的主机名"
+          "markdownDescription": "Hostname for the OpenCode server\n\nOpenCode 服务器的主机名",
+          "order": 1
         },
         "opencode-webui.hideButton": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Hide the OpenCode button in the editor title bar\n\n隐藏编辑器标题栏中的 OpenCode 按钮"
+          "markdownDescription": "Hide the OpenCode button in the editor title bar\n\n隐藏编辑器标题栏中的 OpenCode 按钮",
+          "order": 2
         },
         "opencode-webui.autoReconnect": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Retry connection automatically when the server goes down\n\n服务器断开时自动重试连接"
+          "markdownDescription": "Retry connection automatically when the server goes down\n\n服务器断开时自动重试连接",
+          "order": 3
         },
         "opencode-webui.maxReconnectAttempts": {
           "type": "number",
           "default": 3,
-          "markdownDescription": "Maximum number of reconnection attempts\n\n最大重连次数"
+          "markdownDescription": "Maximum number of reconnection attempts\n\n最大重连次数",
+          "order": 4
         },
         "opencode-webui.sidebarPosition": {
           "type": "string",
@@ -175,37 +180,45 @@
             "left",
             "right"
           ],
-          "markdownDescription": "Where the OpenCode view is shown: `left` = primary sidebar (activity bar), `right` = secondary sidebar.\n\nOpenCode 视图显示位置：`left` = 主侧边栏（活动栏），`right` = 辅助侧边栏。"
+          "markdownDescription": "Where the OpenCode view is shown: `left` = primary sidebar (activity bar), `right` = secondary sidebar.\n\nOpenCode 视图显示位置：`left` = 主侧边栏（活动栏），`right` = 辅助侧边栏。",
+          "order": 5
         },
         "opencode-webui.devcontainerMode": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Automatically detect opencode running in a devcontainer/remote environment\n\n自动检测 devcontainer/远程环境中运行的 opencode"
+          "markdownDescription": "Automatically detect opencode running in a devcontainer/remote environment\n\n自动检测 devcontainer/远程环境中运行的 opencode",
+          "order": 6
         },
         "opencode-webui.autoInstallInDevcontainer": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Automatically install opencode on activation in a devcontainer if not present\n\n在 devcontainer 中激活时若未安装 opencode 则自动安装"
+          "markdownDescription": "Automatically install opencode on activation in a devcontainer if not present\n\n在 devcontainer 中激活时若未安装 opencode 则自动安装",
+          "order": 7
         },
         "opencode-webui.serverPort": {
           "type": "number",
           "default": 4096,
-          "markdownDescription": "Fixed port used when starting the OpenCode server (0 = random). Default 4096 matches opencode.json server.port, so browser settings like color scheme persist across restarts.\n\n启动 OpenCode 服务器时使用的固定端口（0 = 随机）。默认 4096 与 opencode.json 的 server.port 一致，浏览器中的设置（如配色方案）可在重启后保留。"
+          "markdownDescription": "Fixed port used when starting the OpenCode server (0 = random). Default 4096 matches opencode.json server.port, so browser settings like color scheme persist across restarts.\n\n启动 OpenCode 服务器时使用的固定端口（0 = 随机）。默认 4096 与 opencode.json 的 server.port 一致，浏览器中的设置（如配色方案）可在重启后保留。",
+          "order": 8
         },
         "opencode-webui.connectExistingLocal": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Detect and connect to an existing OpenCode server (default port 4096) even in a local (non-remote) environment\n\n即使在本地（非远程）环境也检测并连接已有的 OpenCode 服务器（默认端口 4096）"
+          "markdownDescription": "Detect and connect to an existing OpenCode server (default port 4096) even in a local (non-remote) environment\n\n即使在本地（非远程）环境也检测并连接已有的 OpenCode 服务器（默认端口 4096）",
+          "order": 9
         },
         "opencode-webui.webuiSettingsBridge": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Enable the settings bridge: always route the webview through the local proxy and inject a script into the WebUI page that listens for theme sync and 'open WebUI settings' requests. Disable to connect the webview directly to the server (no bridge features).\n\n启用设置桥接：webview 始终通过本地代理路由，并向 WebUI 页面注入脚本以监听主题同步与「打开 WebUI 设置」请求。禁用后 webview 直接连接服务器（无桥接功能）。"
+          "markdownDescription": "Enable the settings bridge: always route the webview through the local proxy and inject a script into the WebUI page that listens for theme sync and 'open WebUI settings' requests. Disable to connect the webview directly to the server (no bridge features).\n\n启用设置桥接：webview 始终通过本地代理路由，并向 WebUI 页面注入脚本以监听主题同步与「打开 WebUI 设置」请求。禁用后 webview 直接连接服务器（无桥接功能）。",
+          "order": 10
         },
         "opencode-webui.proxyPort": {
           "type": "number",
           "default": 4097,
-          "markdownDescription": "Fixed port for the local proxy injected between the webview and the OpenCode server. The proxy strips frame-blocking headers and injects a settings/theme bridge script. 0 = random port. Use a fixed port so the WebUI keeps its browser-stored settings (color scheme, theme) across restarts. Only used when the settings bridge is enabled.\n\nwebview 与 OpenCode 服务器之间的本地注入代理端口。代理会剥离阻止 iframe 嵌入的响应头，并注入设置/主题桥接脚本。0 = 随机端口。使用固定端口可使 WebUI 在重启后保留浏览器存储的设置（配色方案、主题）。仅在启用设置桥接时生效。"
+          "markdownDescription": "Fixed port for the local proxy injected between the webview and the OpenCode server. The proxy strips frame-blocking headers and injects a settings/theme bridge script. 0 = random port. Use a fixed port so the WebUI keeps its browser-stored settings (color scheme, theme) across restarts. Only used when the settings bridge is enabled.\n\nwebview 与 OpenCode 服务器之间的本地注入代理端口。代理会剥离阻止 iframe 嵌入的响应头，并注入设置/主题桥接脚本。0 = 随机端口。使用固定端口可使 WebUI 在重启后保留浏览器存储的设置（配色方案、主题）。仅在启用设置桥接时生效。",
+          "order": 11,
+          "when": "config.opencode-webui.webuiSettingsBridge"
         }
       }
     }
