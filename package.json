@@ -33,6 +33,13 @@
           "title": "OpenCode",
           "icon": "media/icon.svg"
         }
+      ],
+      "activitybar": [
+        {
+          "id": "opencode-webui-left",
+          "title": "OpenCode",
+          "icon": "media/icon.svg"
+        }
       ]
     },
     "views": {
@@ -40,7 +47,16 @@
         {
           "type": "webview",
           "id": "opencode-webui.view",
-          "name": "OpenCode"
+          "name": "OpenCode",
+          "when": "config.opencode-webui.sidebarPosition != 'left'"
+        }
+      ],
+      "opencode-webui-left": [
+        {
+          "type": "webview",
+          "id": "opencode-webui.viewLeft",
+          "name": "OpenCode",
+          "when": "config.opencode-webui.sidebarPosition == 'left'"
         }
       ]
     },
@@ -97,22 +113,22 @@
       "view/title": [
         {
           "command": "opencode-webui.startServer",
-          "when": "view == opencode-webui.view && !opencodeSidebarServerRunning",
+          "when": "(view == opencode-webui.view || view == opencode-webui.viewLeft) && !opencodeSidebarServerRunning",
           "group": "navigation"
         },
         {
           "command": "opencode-webui.stopServer",
-          "when": "view == opencode-webui.view && opencodeSidebarServerRunning",
+          "when": "(view == opencode-webui.view || view == opencode-webui.viewLeft) && opencodeSidebarServerRunning",
           "group": "navigation"
         },
         {
           "command": "opencode-webui.restartServer",
-          "when": "view == opencode-webui.view && opencodeSidebarServerRunning",
+          "when": "(view == opencode-webui.view || view == opencode-webui.viewLeft) && opencodeSidebarServerRunning",
           "group": "navigation"
         },
         {
           "command": "opencode-webui.installBinary",
-          "when": "view == opencode-webui.view && !opencodeSidebarBinaryInstalled",
+          "when": "(view == opencode-webui.view || view == opencode-webui.viewLeft) && !opencodeSidebarBinaryInstalled",
           "group": "navigation"
         }
       ]
@@ -156,9 +172,10 @@
           "type": "string",
           "default": "right",
           "enum": [
+            "left",
             "right"
           ],
-          "markdownDescription": "OpenCode always appears in the secondary sidebar (right side). This option is kept for compatibility.\n\nOpenCode 始终显示在右侧侧边栏。此选项仅为兼容性保留。"
+          "markdownDescription": "Where the OpenCode view is shown: `left` = primary sidebar (activity bar), `right` = secondary sidebar.\n\nOpenCode 视图显示位置：`left` = 主侧边栏（活动栏），`right` = 辅助侧边栏。"
         },
         "opencode-webui.devcontainerMode": {
           "type": "boolean",
@@ -180,15 +197,15 @@
           "default": true,
           "markdownDescription": "Detect and connect to an existing OpenCode server (default port 4096) even in a local (non-remote) environment\n\n即使在本地（非远程）环境也检测并连接已有的 OpenCode 服务器（默认端口 4096）"
         },
-        "opencode-webui.proxyPort": {
-          "type": "number",
-          "default": 4097,
-          "markdownDescription": "Fixed port for the local proxy injected between the webview and the OpenCode server. The proxy strips frame-blocking headers and injects a settings/theme bridge script. 0 = random port. Use a fixed port so the WebUI keeps its browser-stored settings (color scheme, theme) across restarts.\n\nwebview 与 OpenCode 服务器之间的本地注入代理端口。代理会剥离阻止 iframe 嵌入的响应头，并注入设置/主题桥接脚本。0 = 随机端口。使用固定端口可使 WebUI 在重启后保留浏览器存储的设置（配色方案、主题）。"
-        },
         "opencode-webui.webuiSettingsBridge": {
           "type": "boolean",
           "default": true,
           "markdownDescription": "Enable the settings bridge: always route the webview through the local proxy and inject a script into the WebUI page that listens for theme sync and 'open WebUI settings' requests. Disable to connect the webview directly to the server (no bridge features).\n\n启用设置桥接：webview 始终通过本地代理路由，并向 WebUI 页面注入脚本以监听主题同步与「打开 WebUI 设置」请求。禁用后 webview 直接连接服务器（无桥接功能）。"
+        },
+        "opencode-webui.proxyPort": {
+          "type": "number",
+          "default": 4097,
+          "markdownDescription": "Fixed port for the local proxy injected between the webview and the OpenCode server. The proxy strips frame-blocking headers and injects a settings/theme bridge script. 0 = random port. Use a fixed port so the WebUI keeps its browser-stored settings (color scheme, theme) across restarts. Only used when the settings bridge is enabled.\n\nwebview 与 OpenCode 服务器之间的本地注入代理端口。代理会剥离阻止 iframe 嵌入的响应头，并注入设置/主题桥接脚本。0 = 随机端口。使用固定端口可使 WebUI 在重启后保留浏览器存储的设置（配色方案、主题）。仅在启用设置桥接时生效。"
         }
       }
     }

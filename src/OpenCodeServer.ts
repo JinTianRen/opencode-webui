@@ -539,6 +539,15 @@ export class OpenCodeServer {
   get serverUrl(): string { return `http://${this._hostname}:${this._port}`; }
   get proxyUrl(): string { return `http://${this._hostname}:${this._proxyPort}`; }
   get webviewUrl(): string { return this._webviewUrl || this.proxyUrl; }
+  get connectedPort(): number {
+    try {
+      const u = new URL(this.webviewUrl);
+      const p = parseInt(u.port, 10);
+      return Number.isFinite(p) && p > 0 ? p : this._port;
+    } catch {
+      return this._port;
+    }
+  }
   get lastError(): string { return this._processError; }
   get lastExitCode(): number | null { return this._processExitCode; }
   get outputChannel(): vscode.OutputChannel { return this._outputChannel; }

@@ -3,6 +3,7 @@ import { OpenCodeServer } from './OpenCodeServer';
 
 export class OpenCodePanel implements vscode.WebviewViewProvider {
   public static readonly viewType = 'opencode-webui.view';
+  public static readonly viewTypeLeft = 'opencode-webui.viewLeft';
   private _view: vscode.WebviewView | undefined;
   private _panelVisible = false;
   private _isStarting = false;
@@ -139,17 +140,26 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
     if (this._panelVisible) {
       return;
     }
-    await vscode.commands.executeCommand('workbench.view.extension.opencode-webui');
+    const position = vscode.workspace.getConfiguration('opencode-webui')
+      .get<string>('sidebarPosition', 'right');
+    const viewId = position === 'left'
+      ? 'workbench.view.extension.opencode-webui-left'
+      : 'workbench.view.extension.opencode-webui';
+    await vscode.commands.executeCommand(viewId);
   }
 
   async close(): Promise<void> {
     this._panelVisible = false;
     this._view = undefined;
     vscode.commands.executeCommand('setContext', 'opencodeSidebarPanelVisible', false);
-    try {
-      await vscode.commands.executeCommand('workbench.action.agentToggleSecondarySidebarVisibility');
-    } catch {
-      await vscode.commands.executeCommand('workbench.action.toggleSecondarySidebarVisibility');
+    const position = vscode.workspace.getConfiguration('opencode-webui')
+      .get<string>('sidebarPosition', 'right');
+    if (position !== 'left') {
+      try {
+        await vscode.commands.executeCommand('workbench.action.agentToggleSecondarySidebarVisibility');
+      } catch {
+        await vscode.commands.executeCommand('workbench.action.toggleSecondarySidebarVisibility');
+      }
     }
   }
 
@@ -188,7 +198,7 @@ export class OpenCodePanel implements vscode.WebviewViewProvider {
       if (this._server.isConnectedToExisting) {
         portLabel = ' (existing)';
       }
-      const displayPort = this._server.port;
+      const displayPort = this._server.connectedPort;
       statusText = `Connected \u25CF  port ${displayPort}${portLabel}`;
     } else if (this._isStarting) {
       statusColor = '#e5c07b';

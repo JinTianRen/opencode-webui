@@ -13,7 +13,8 @@ export async function activate(context: vscode.ExtensionContext) {
   vscode.commands.executeCommand('setContext', 'opencodeSidebarBinaryInstalled', server.isBinaryInstalled());
 
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(OpenCodePanel.viewType, panel)
+    vscode.window.registerWebviewViewProvider(OpenCodePanel.viewType, panel),
+    vscode.window.registerWebviewViewProvider(OpenCodePanel.viewTypeLeft, panel)
   );
 
   server.onDidChangeStatus((running) => {
