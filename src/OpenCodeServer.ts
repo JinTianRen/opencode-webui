@@ -785,20 +785,34 @@ export class OpenCodeServer {
 
     let server = this.proxy ?? http.createServer(handler);
     this.proxy = server;
-    try {
-      this._proxyPort = await listenProxy(server, requestedPort);
-    } catch (err) {
-      const e = err as NodeJS.ErrnoException;
-      if (e.code === 'EADDRINUSE' && requestedPort !== 0) {
-        this._outputChannel.appendLine(
-          `Proxy port ${requestedPort} is in use, falling back to a random port`
-        );
-        server.close();
-        server = http.createServer(handler);
-        this.proxy = server;
+    if (requestedPort !== 0) {
+      // Retry the fixed port briefly so the origin stays stable (theme/settings continuity).
+      const maxAttempts = 10;
+      let lastErr: NodeJS.ErrnoException | undefined;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          this._proxyPort = await listenProxy(server, requestedPort);
+          lastErr = undefined;
+          break;
+        } catch (err) {
+          const e = err as NodeJS.ErrnoException;
+          lastErr = e;
+          if (e.code !== 'EADDRINUSE') { break; }
+          await new Promise(res => setTimeout(res, 300));
+        }
+      }
+      if (lastErr) {
+        this._outputChannel.appendLine(`Proxy error: ${lastErr.message}`);
+        this.proxy = null;
+        return;
+      }
+    } else {
+      try {
         this._proxyPort = await listenProxy(server, 0);
-      } else {
+      } catch (err) {
+        const e = err as NodeJS.ErrnoException;
         this._outputChannel.appendLine(`Proxy error: ${e.message}`);
+        this.proxy = null;
         return;
       }
     }
