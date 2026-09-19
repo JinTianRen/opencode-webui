@@ -6,7 +6,7 @@
   "publisher": "jtian",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agustin-gigena/opencode-sidebar-web"
+    "url": "https://github.com/JinTianRen/opencode-webui"
   },
   "engines": {
     "vscode": "^1.106.0"
@@ -241,5 +241,9 @@
   },
   "dependencies": {
     "opencode-ai": "^1.15.10"
+  },
+  "homepage": "https://github.com/JinTianRen/opencode-webui",
+  "bugs": {
+    "url": "https://github.com/JinTianRen/opencode-webui/issues"
   }
 }
