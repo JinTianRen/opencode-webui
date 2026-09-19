@@ -225,12 +225,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run esbuild",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "esbuild": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify --sourcemap",
-    "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src",
-    "test": "vscode-test"
+    "esbuild": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --minify --sourcemap"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
